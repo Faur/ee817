@@ -14,14 +14,17 @@ from gym_utils import *
 # It's easiest, if that's possible, if a child class keeps the same arguments to
 #  train() and get_action(), and the same return values. Otherwise this class is not
 #  much use ;)
-# ! And: !
-# The return values "other_training_stats" and "other_prediction_stats" are expected
-#  to be a list each (not arrays). Each list entry can be either a scalar, or a list,
-#  or a numpy array. If it is a list, or a numpy array with *one* dimension (i.e.,
-#  len(a.shape)==1), it is interpreted as values for a list of variables that will be
-#  plotted together in one plot.
-#  If it's a scalar, it will become one line plot.
-#  If it's a bigger array, training.py will calculate average and percentiles of these values.
+#
+# ! And: !  (other_training_stats etc:)
+# ********
+# * The return values "other_training_stats" and "other_prediction_stats" are expected
+# *  to be a list each (not arrays). Each list entry can be either a scalar, or a list,
+# *  or a numpy array. If it is a list, or a numpy array with *one* dimension (i.e.,
+# *  len(a.shape)==1), it is interpreted as values for a list of variables that will be
+# *  plotted together in one plot.
+# *  If it's a scalar, it will become a one-line plot.
+# *  If it's a bigger array, logging will calculate average and percentiles of these
+# *  values. (> pyplot_logging.py)
 #
 
 class Learner():
@@ -38,7 +41,8 @@ class Learner():
         self.action_space = None    # maybe use openAI-gym "gym.box.Box"/"...Discrete" variables here
         self.observation_space = None     # "Box"/"Discrete"; if image input: use "Box"
 
-        self.sess # learner owns a session
+        self.sess = tf.Session() # learner is expected to own a session
+        self.sess.run(tf.global_variables_initializer())
 
 
     def train(self, s_batch, a_batch, r_batch, t_batch, s2_batch):
@@ -78,6 +82,8 @@ class Learner():
     def s_dim(self):
         return get_gym_space_size(self.observation_space)
 
+    def filter_output_qvals(self, other_training_stats, other_prediction_stats):
+        return np.array([0])
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

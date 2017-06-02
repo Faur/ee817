@@ -2,69 +2,42 @@ import numpy as np
 import tensorflow as tf
 import gym
 from gym import wrappers
+import gym.spaces
 import datetime
 
-import ddpg_learner
+from ddpg_learner import DDPGLearner
+from vanillaPG_learner import VanillaPGLearner
 from summary_manager import *
 from gym_utils import *
 from replay_buffer import *
 from pyplot_logging import *
 
+#
+#   Copy-paste this and adjust the constants in the beginning (capital letters) to
+#       train a different model or environment.
+#
 
-
-# ==========================
-#   Training Parameters
-# ==========================
-# Max training steps
-MAX_EPISODES = 500#50000
-# Max episode length
-MAX_EP_STEPS = 1000
-# Base learning rate for the Actor network
-ACTOR_LEARNING_RATE = 0.0001
-# Base learning rate for the Critic Network
-CRITIC_LEARNING_RATE = 0.001
-# Discount factor
-GAMMA = 0.99
-# Soft target update param
-TAU = 0.001
 
 # ===========================
-#   Utility Parameters
+# * Choose your setting.
 # ===========================
-# Render gym env during training
-RENDER_ENV = False
-# Use Gym Monitor
-GYM_MONITOR_EN = False  # nonworking on my machine
-# Gym environment
-ENV_NAME = 'Pendulum-v0'  #'GazeboCircuit2TurtlebotLidar-v0', 'MountainCarContinuous-v0', 'Pendulum-v0'
-ENV_NAME_SHORT = "pendulum"
-ENV_IS_A_GAZEBO = False
-LOG_EVERY = 100
-# Whether to restore from existing weights:
-RESTORE = True
-STORE_WEIGHTS = True
-STORE_WEIGHTS_EVERY = 100  
-MODEL_NAME = "ddpg"
-# Directory for storing gym results
-MONITOR_DIR = './results/gym_monitor_' + MODEL_NAME + "_" +ENV_NAME_SHORT
-# Directory for storing tensorboard summary results
-SUMMARY_DIR = './results/still_testing/tf_'+ MODEL_NAME + "_" + ENV_NAME_SHORT
-# Directory to store weights to and load weights from
-WEIGHTS_DIR = "./weights/still_testing/weights_"+MODEL_NAME + "_" + ENV_NAME_SHORT + "/"
-WEIGHTS_TO_RESTORE = WEIGHTS_DIR + "ep_2.ckpt"
-RANDOM_SEED = 1234
-# Size of replay buffer
-BUFFER_SIZE = 10000
-MINIBATCH_SIZE = 64
 
+# setting = "ddpg_pendulum"
+# from globals_ddpg_pendulum import *
 
+setting = "ddpg_pendulum_from_pixels"
+from globals_vanillaPG_cartpole import *
 
-# Todo: add additionals returned by learner to logging
-# Todo: actually log the summaries
-# Todo: write a logger making actual plots
+#  todo
+#setting = "vanillaPG_cartpole"
+#setting = "vanillaPG_gazebo"
+#setting = "DQN_cartpole"
+#setting = "DQN_gazebo"
+
 
 
 def main():
+
     # ===========================
     # * Set up the environment
 
@@ -79,11 +52,20 @@ def main():
         else:
             env = wrappers.Monitor(env, MONITOR_DIR, force=True)
 
+    if ENV_IS_A_GAZEBO:
+
+        env.action_space = gym.spaces.Discrete(NR_ACTIONS)
+        env.observation_space = gym.spaces.Box(low=-float("inf"), high=float("inf"), shape=(NR_OBSERVATIONS,))
 
     # ===========================
     # * Set up the learner
+    if setting.contains("ddpg"):
+        learner = DDPGLearner(observation_space=env.observation_space, action_space=env.action_space)
+    elif setting.contains("vanillaPG"):
+        learner = VanillaPGLearner(observation_space=env.observation_space, action_space=env.action_space)
+    else:
+        raise NotImplementedError
 
-    learner = ddpg_learner.DDPGLearner(observation_space=env.observation_space, action_space=env.action_space)
 
     saver = tf.train.Saver()
     if RESTORE:
@@ -95,7 +77,6 @@ def main():
     timestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
     tf_logdir = SUMMARY_DIR + "_tf/" + timestr
     logdir = SUMMARY_DIR + "/" + timestr
-    #writer = tf.summary.FileWriter(SUMMARY_DIR + "/" + timestr, learner.get_graph())
 
     # for DDPG here:
     log_variable_names_ep = ["av_min_q", "av_max_q","survival_time", "ep_reward"]
@@ -127,6 +108,7 @@ def main():
             ep_reward = 0
             av_q_max_ep = 0
             av_q_min_ep = 0
+            ep_history = []
             s = env.reset()
 
             for j in range(MAX_EP_STEPS):
@@ -140,9 +122,12 @@ def main():
 
 
                 #  Add experience to buffer
-                ## Todo: this might throw errors for spaces with more than one dimension -?
-                replay_buffer.add(np.reshape(s, (learner.s_dim(),)), np.reshape(a, (learner.a_dim(),)), r,
-                                  terminated, np.reshape(s2, (learner.s_dim(),)))
+                if RAW_R:
+                    ## Todo: this might throw errors for spaces with more than one dimension -?
+                    replay_buffer.add(np.reshape(s, (learner.s_dim(),)), np.reshape(a, (learner.a_dim(),)), r,
+                                      terminated, np.reshape(s2, (learner.s_dim(),)))
+                else:
+                    ep_history.append([s, a, r, int(terminated), s2])   # we'll cast that list to a np.array, so better only have it contain numbers
 
                 # Keep adding experience to the memory until
                 # there are at least minibatch size samples
@@ -159,15 +144,11 @@ def main():
                     gradients, summaries, losses, loss_summaries, other_training_stats \
                         = learner.train(s_batch, a_batch, r_batch, t_batch, s2_batch)
 
-                    #  Log gradients
-
-
-                    #av_q_max_ep += max(other_training_stats[0])
-                    #av_q_min_ep += min(other_training_stats[0])
-
-                    #other_training_stats = [np.mean(otherstat) for otherstat in other_training_stats]
-                    #other_pred_stats = [np.mean(otherstat) for otherstat in other_pred_stats]
-
+                    # If the learner doesn't use q values or it's not implemented, these
+                    #   are just zero
+                    q_vals = learner.filter_output_qvals(other_training_stats, other_pred_stats)
+                    av_q_max_ep += max(q_vals)
+                    av_q_min_ep += min(q_vals)
 
                     #  Log state, action etc
                     if learner.s_dim() == 1:
@@ -201,20 +182,30 @@ def main():
                 if ep % LOG_EVERY == 0:
                     logger.track(dict(zip(log_variable_names_step, var_vals_step)), step_nr=j)
 
+
                 if terminated:
-                    print('| Reward: %.2i' % int(ep_reward), " | Episode", ep, \
-                          '| Qmax: %.4f' % (av_q_max_ep / float(j)))
 
-                    # store plots for past episode
-                    if ep % LOG_EVERY == 0:
-                        logger.store_tracked(log_variable_names_step, title="just_testing_"+"ep-"+str(ep), step_name="steps")
-                    # track per-episode variables
-                    logger.track(dict(zip(log_variable_names_ep, var_vals_ep)), ep)
-                    # track gradient statistics
-                    if not gradients is None:
-                        logger.merge_collected(learner.gradient_names, ep)
+                        print('| Reward: %.2i' % int(ep_reward), " | Episode", ep, \
+                              '| Qmax: %.4f' % (av_q_max_ep / float(j)))
 
-                    break
+                        # add decayed rewards only once per episode
+                        if not RAW_R:
+                            ep_history = np.array(ep_history)
+                            ep_history[:, 2] = discount_rewards(ep_history[:, 2])
+                            for [s, a, r, term, s2] in ep_history:
+                                replay_buffer.add(np.reshape(s, (learner.s_dim(),)), np.reshape(a, (learner.a_dim(),)),
+                                                  r, term, np.reshape(s2, (learner.s_dim(),)))
+
+                        # store plots for past episode
+                        if ep % LOG_EVERY == 0:
+                            logger.store_tracked(log_variable_names_step, title="just_testing_"+"ep-"+str(ep), step_name="steps")
+                        # track per-episode variables
+                        logger.track(dict(zip(log_variable_names_ep, var_vals_ep)), ep)
+                        # track gradient statistics
+                        if not gradients is None:
+                            logger.merge_collected(learner.gradient_names, ep)
+
+                        break
 
             #
             if ENV_IS_A_GAZEBO:

@@ -15,7 +15,7 @@ from learner import *
 #   Actor and Critic DNNs
 # ===========================
 
-
+# !! Not yet the DDPGLearner class !! That one is further down. (note-to-self)
 class ActorNetwork(object):
     """
     Input to the network is the state, output is the action
@@ -362,7 +362,7 @@ class DDPGLearner(Learner):
         assert len(all_grads) == len(self.gradient_names) == len(all_grad_summaries)
 
 
-        return all_grads, all_grad_summaries, [critic_loss], [summary_crit_loss], [np.mean(predicted_q_value)]
+        return all_grads, all_grad_summaries, [critic_loss], [summary_crit_loss], [predicted_q_value]
 
 
 
@@ -379,9 +379,10 @@ class DDPGLearner(Learner):
         a = self.actor.predict(np.reshape(s, (1, self.actor.s_dim))) + np.random.uniform(self.action_space.low * 1. / (1. + t),
                                                                                self.action_space.high * 1. / (1. + t))
         a = np.clip(a, self.action_space.low, self.action_space.high)
-        #a[:][:] = max(min(self.action_space.high, a),
-        #              self.action_space.low)
-        #if a[0, 0] > self.action_space.high or a[0, 0] < self.action_space.low:
-        #    print("Why!")
 
         return a.flatten(), []          # flatten: actor.predict returns an array of shape (1,1), but logging expects a single-dimensional input
+
+
+
+    def filter_output_qvals(self, other_training_stats, other_prediction_stats):
+        return other_training_stats[0]
