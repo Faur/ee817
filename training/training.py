@@ -43,7 +43,7 @@ LOG_EVERY = 100
 # Whether to restore from existing weights:
 RESTORE = True
 STORE_WEIGHTS = True
-STORE_WEIGHTS_EVERY = 100  #todo
+STORE_WEIGHTS_EVERY = 100  
 MODEL_NAME = "ddpg"
 # Directory for storing gym results
 MONITOR_DIR = './results/gym_monitor_' + MODEL_NAME + "_" +ENV_NAME_SHORT
