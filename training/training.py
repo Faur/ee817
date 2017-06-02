@@ -16,7 +16,7 @@ from pyplot_logging import *
 #   Training Parameters
 # ==========================
 # Max training steps
-MAX_EPISODES = 100#50000
+MAX_EPISODES = 500#50000
 # Max episode length
 MAX_EP_STEPS = 1000
 # Base learning rate for the Actor network
@@ -37,15 +37,26 @@ RENDER_ENV = False
 GYM_MONITOR_EN = False  # nonworking on my machine
 # Gym environment
 ENV_NAME = 'Pendulum-v0'  #'GazeboCircuit2TurtlebotLidar-v0', 'MountainCarContinuous-v0', 'Pendulum-v0'
+ENV_NAME_SHORT = "pendulum"
 ENV_IS_A_GAZEBO = False
+LOG_EVERY = 100
+# Whether to restore from existing weights:
+RESTORE = True
+STORE_WEIGHTS = True
+STORE_WEIGHTS_EVERY = 100  #todo
+MODEL_NAME = "ddpg"
 # Directory for storing gym results
-MONITOR_DIR = './results/gym_ddpg'
+MONITOR_DIR = './results/gym_monitor_' + MODEL_NAME + "_" +ENV_NAME_SHORT
 # Directory for storing tensorboard summary results
-SUMMARY_DIR = './results/still_testing/tf_ddpg_pendulum'
+SUMMARY_DIR = './results/still_testing/tf_'+ MODEL_NAME + "_" + ENV_NAME_SHORT
+# Directory to store weights to and load weights from
+WEIGHTS_DIR = "./weights/still_testing/weights_"+MODEL_NAME + "_" + ENV_NAME_SHORT + "/"
+WEIGHTS_TO_RESTORE = WEIGHTS_DIR + "ep_2.ckpt"
 RANDOM_SEED = 1234
 # Size of replay buffer
 BUFFER_SIZE = 10000
 MINIBATCH_SIZE = 64
+
 
 
 # Todo: add additionals returned by learner to logging
@@ -73,6 +84,11 @@ def main():
     # * Set up the learner
 
     learner = ddpg_learner.DDPGLearner(observation_space=env.observation_space, action_space=env.action_space)
+
+    saver = tf.train.Saver()
+    if RESTORE:
+        saver.restore(learner.sess, WEIGHTS_TO_RESTORE)
+        print("Model restored from file: %s" % WEIGHTS_TO_RESTORE)
 
     # ===========================
     # * Set up logging, if needed
@@ -146,11 +162,11 @@ def main():
                     #  Log gradients
 
 
-                    av_q_max_ep += max(other_training_stats[0])
-                    av_q_min_ep += min(other_training_stats[0])
+                    #av_q_max_ep += max(other_training_stats[0])
+                    #av_q_min_ep += min(other_training_stats[0])
 
-                    other_training_stats = [np.mean(otherstat) for otherstat in other_training_stats]
-                    other_pred_stats = [np.mean(otherstat) for otherstat in other_pred_stats]
+                    #other_training_stats = [np.mean(otherstat) for otherstat in other_training_stats]
+                    #other_pred_stats = [np.mean(otherstat) for otherstat in other_pred_stats]
 
 
                     #  Log state, action etc
@@ -168,7 +184,7 @@ def main():
                     prefilled_summaries_step = summaries + loss_summaries
 
                     # collect gradients
-                    logger.collect(dict(zip(learner.gradient_names, gradients)))
+                    logger.collect(dict(zip(learner.gradient_names, np.absolute(gradients))))
 
 
 
@@ -182,14 +198,16 @@ def main():
                 tf_summarizer.log(learner.sess, ep, j, var_vals_ep=var_vals_ep, var_vals_step=var_vals_step,terminated=terminated,
                                    prefilled_summaries_ep=prefilled_summaries_ep, prefilled_summaries_step=prefilled_summaries_step)
                 # log per-step variables
-                logger.track(dict(zip(log_variable_names_step, var_vals_step)), step_nr=j)
+                if ep % LOG_EVERY == 0:
+                    logger.track(dict(zip(log_variable_names_step, var_vals_step)), step_nr=j)
 
                 if terminated:
                     print('| Reward: %.2i' % int(ep_reward), " | Episode", ep, \
                           '| Qmax: %.4f' % (av_q_max_ep / float(j)))
 
                     # store plots for past episode
-                    logger.store_tracked(log_variable_names_step, title="just_testing_"+"ep-"+str(ep), step_name="steps")
+                    if ep % LOG_EVERY == 0:
+                        logger.store_tracked(log_variable_names_step, title="just_testing_"+"ep-"+str(ep), step_name="steps")
                     # track per-episode variables
                     logger.track(dict(zip(log_variable_names_ep, var_vals_ep)), ep)
                     # track gradient statistics
@@ -198,16 +216,28 @@ def main():
 
                     break
 
+            #
             if ENV_IS_A_GAZEBO:
                 env._flush(force=True)
 
-    finally:
+            if ep != 0 and ep % STORE_WEIGHTS_EVERY == 0:
+                if not os.path.exists(WEIGHTS_DIR):
+                    os.makedirs(WEIGHTS_DIR)
+                saver.save(learner.sess, WEIGHTS_DIR + "ep_"+str(ep)+".ckpt")
 
+
+    finally:
 
         # After training finished, store plots of all per-episode variables & stats
         logger.store_all("just_testing", ep, step_name="episode")
 
-
+        if STORE_WEIGHTS:
+            if not os.path.exists(WEIGHTS_DIR):
+                os.makedirs(WEIGHTS_DIR)
+            try:
+                saver.save(learner.sess, WEIGHTS_DIR + "ep_" + str(ep) + ".ckpt")
+            except:
+                saver.save(learner.sess, WEIGHTS_DIR + "ep_unknown.ckpt")
 
 
         # ===========================

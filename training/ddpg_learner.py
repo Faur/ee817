@@ -362,7 +362,7 @@ class DDPGLearner(Learner):
         assert len(all_grads) == len(self.gradient_names) == len(all_grad_summaries)
 
 
-        return all_grads, all_grad_summaries, [critic_loss], [summary_crit_loss], [predicted_q_value]
+        return all_grads, all_grad_summaries, [critic_loss], [summary_crit_loss], [np.mean(predicted_q_value)]
 
 
 
@@ -384,4 +384,4 @@ class DDPGLearner(Learner):
         #if a[0, 0] > self.action_space.high or a[0, 0] < self.action_space.low:
         #    print("Why!")
 
-        return a, []
+        return a.flatten(), []          # flatten: actor.predict returns an array of shape (1,1), but logging expects a single-dimensional input

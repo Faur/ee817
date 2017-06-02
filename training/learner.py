@@ -12,10 +12,17 @@ from gym_utils import *
 #  self.observation_space. You can just pass these two as variables to __init__().
 #
 # It's easiest, if that's possible, if a child class keeps the same arguments to
-#  train() and get_action(), and the same return values. Otherwise this class isn't
+#  train() and get_action(), and the same return values. Otherwise this class is not
 #  much use ;)
+# ! And: !
+# The return values "other_training_stats" and "other_prediction_stats" are expected
+#  to be a list each (not arrays). Each list entry can be either a scalar, or a list,
+#  or a numpy array. If it is a list, or a numpy array with *one* dimension (i.e.,
+#  len(a.shape)==1), it is interpreted as values for a list of variables that will be
+#  plotted together in one plot.
+#  If it's a scalar, it will become one line plot.
+#  If it's a bigger array, training.py will calculate average and percentiles of these values.
 #
-
 
 class Learner():
 
@@ -31,6 +38,7 @@ class Learner():
         self.action_space = None    # maybe use openAI-gym "gym.box.Box"/"...Discrete" variables here
         self.observation_space = None     # "Box"/"Discrete"; if image input: use "Box"
 
+        self.sess # learner owns a session
 
 
     def train(self, s_batch, a_batch, r_batch, t_batch, s2_batch):
@@ -59,6 +67,8 @@ class Learner():
         '''
         raise NotImplementedError("Please implement action prediction.")
         return action, other_prediction_stats
+
+
 
     # action size
     def a_dim(self):

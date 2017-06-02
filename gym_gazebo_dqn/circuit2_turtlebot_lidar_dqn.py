@@ -295,7 +295,7 @@ if __name__ == '__main__':
         memorySize = 1000000
 #         network_inputs = 100
 #         network_outputs = 21
-        network_inputs = 20
+        network_inputs = 100
         network_outputs = 21 #0:go, 1:Left, 2:Right
         
         network_structure = [300,300]

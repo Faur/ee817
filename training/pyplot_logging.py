@@ -106,10 +106,15 @@ class Logger():
         for key in variable_dict:
             val = variable_dict[key]
 
+            # if val is an array, and not a vector or scalar, track statistics instead
+            if isinstance(val, np.ndarray) and (len(val.shape) > 1):
+                self.track_stats({key: val}, step_nr=step_nr)
+                continue
+
             if isinstance(val, list):
                 val = np.array(val)
             if isinstance(val, np.ndarray):
-                assert len(val.shape)==1 or (len(val.shape)==2 and val.shape[1]==1)
+                assert len(val.shape)==1
             else: # it's a scalar
                 val = np.array([val])
 
@@ -132,6 +137,9 @@ class Logger():
 
 
         for key in variable_names:
+            if key in self.dict_stats:
+                self.store_tracked_stats([key], title=title, step_name=step_name)
+                continue
             assert key in self.dict and key in self.is_multi_var
             # store plot
             title = re.sub('[^a-zA-Z0-9_\n\-]', '-', title)
