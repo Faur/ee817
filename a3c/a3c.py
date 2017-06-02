@@ -24,36 +24,41 @@ class AC_Network():
 			# # Convert input to shape=[batch_size, 84, 84, 1] images
 			# self.imageIn = tf.reshape(self.inputs, shape=[-1, 84, 84, 1])
 
-			self.imageIn = tf.placeholder(dtype=tf.float32, shape=[None] + s_size)
+			self.inputs = tf.placeholder(dtype=tf.float32, shape=[None] + s_size, name='inputs')
 
 			## Build model
-			self.conv1 = slim.conv2d(
-				inputs=self.imageIn,
-				activation_fn=tf.nn.elu,
-				num_outputs=16,
-				kernel_size=[8,8],
-				stride=[4,4],
-				padding='VALID'
-				)
-			self.conv2 = slim.conv2d(
-				inputs=self.conv1,
-				activation_fn=tf.nn.elu,
-				num_outputs=32,
-				kernel_size=[4,4],
-				stride=[2,2],
-				padding='VALID'
-				)
-			hidden = slim.fully_connected(slim.flatten(self.conv2), 256, activation_fn=tf.nn.elu)
+			if 0: # CNN
+				self.conv1 = slim.conv2d(
+					inputs=self.inputs,
+					activation_fn=tf.nn.elu,
+					num_outputs=16,
+					kernel_size=[8,8],
+					stride=[4,4],
+					padding='VALID'
+					)
+				self.conv2 = slim.conv2d(
+					inputs=self.conv1,
+					activation_fn=tf.nn.elu,
+					num_outputs=32,
+					kernel_size=[4,4],
+					stride=[2,2],
+					padding='VALID'
+					)
+				hidden = slim.fully_connected(slim.flatten(self.conv2), 256, activation_fn=tf.nn.elu)
+			else: # Dense
+				hidden = slim.fully_connected(self.inputs, 20, activation_fn=tf.nn.elu)
+
+			# TODO: LSTM part is temporarily disabled!
 			with tf.variable_scope('LSTM_cell'):
 				lstm_cell = tf.contrib.rnn.BasicLSTMCell(256, state_is_tuple=True)
 				c_init = np.zeros((1, lstm_cell.state_size.c), np.float32)
 				h_init = np.zeros((1, lstm_cell.state_size.h), np.float32)
 				self.state_init = (c_init, h_init)
-				c_in = tf.placeholder(tf.float32, [1, lstm_cell.state_size.c])
-				h_in = tf.placeholder(tf.float32, [1, lstm_cell.state_size.h])
+				c_in = tf.placeholder(tf.float32, [1, lstm_cell.state_size.c], name='c_in')
+				h_in = tf.placeholder(tf.float32, [1, lstm_cell.state_size.h], name='h_in')
 				self.state_in = (c_in, h_in)
 				rnn_in = tf.expand_dims(hidden, axis=[0]) # shape = [1, hidden.shape]
-				step_size = tf.shape(self.imageIn)[:1]
+				step_size = tf.shape(self.inputs)[:1]
 				state_in = tf.contrib.rnn.LSTMStateTuple(c_in, h_in)
 				lstm_outputs, lstm_state = tf.nn.dynamic_rnn(
 					lstm_cell, rnn_in, initial_state=state_in, sequence_length=step_size,
@@ -63,20 +68,27 @@ class AC_Network():
 				rnn_out = tf.reshape(lstm_outputs, [-1, 256])
 
 			#Output layers for policy and value estimation
-			self.policy = slim.fully_connected(rnn_out, a_size,
+			# self.policy = slim.fully_connected(rnn_out, a_size,
+			# 	activation_fn=tf.nn.softmax,
+			# 	weights_initializer=normalized_columns_initializer(0.01),
+			# 	biases_initializer=None)
+			# self.value = slim.fully_connected(rnn_out, 1, activation_fn=None,
+			# 	weights_initializer=normalized_columns_initializer(1.0),
+			# 	biases_initializer=None)
+			self.policy = slim.fully_connected(hidden, a_size,
 				activation_fn=tf.nn.softmax,
 				weights_initializer=normalized_columns_initializer(0.01),
 				biases_initializer=None)
-			self.value = slim.fully_connected(rnn_out, 1, activation_fn=None,
+			self.value = slim.fully_connected(hidden, 1, activation_fn=None,
 				weights_initializer=normalized_columns_initializer(1.0),
 				biases_initializer=None)
 
 			### Only the worker networks need ops for loss functions and gradient updating
 			if scope != 'global':
-				self.actions = tf.placeholder(dtype=tf.int32, shape=None) # discrete actions!
-				self.actions_onehot = tf.one_hot(self.actions, a_size, dtype=tf.float32)
-				self.target_v = tf.placeholder(shape=[None], dtype=tf.float32)
-				self.advantages = tf.placeholder(shape=[None], dtype=tf.float32)
+				self.actions = tf.placeholder(dtype=tf.int32, shape=None, name='actions') # discrete actions!
+				self.actions_onehot = tf.one_hot(self.actions, a_size, dtype=tf.float32, name='actions_hot')
+				self.target_v = tf.placeholder(shape=[None], dtype=tf.float32, name='target_v')
+				self.advantages = tf.placeholder(shape=[None], dtype=tf.float32, name='advantages')
 
 				self.responsible_outputs = tf.reduce_sum(self.policy * self.actions_onehot, axis=[1])
 
@@ -84,8 +96,10 @@ class AC_Network():
 				self.entropy = - tf.reduce_mean(self.policy*tf.log(self.policy))
 				self.policy_loss = - tf.reduce_mean(tf.log(self.responsible_outputs)*self.advantages)
 				self.value_loss = 0.5 * tf.reduce_mean(tf.square(self.target_v-tf.reshape(self.value, [-1])))
-				# TODO: Check: Why do we multiply value_loss with 0.5 twice?
-				self.loss = 0.5*self.value_loss + self.policy_loss - 0.01*self.entropy
+				# TODO: This loss mixing is extremely env dependent
+				self.value_loss *= 0.5
+				# self.loss = self.value_loss + self.policy_loss - 0.01*self.entropy
+				self.loss = self.value_loss + self.policy_loss 
 
 				## Get gradients from local network using local losses
 				local_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
@@ -124,9 +138,11 @@ class Worker():
 		rollout = np.array(rollout) # episode_buffer: list([s, a, r, s1, done, v[0,0]])
 									#                       0  1  2   3                 4       5
 		observations = rollout[:, 0] # Q: What is in this? how does this work?
+		observations = np.array([i for i in observations])
 		actions = rollout[:, 1]
 		rewards = rollout[:, 2]
 		next_observations = rollout[:, 3]
+		next_observations = np.array([i for i in next_observations])
 		values = rollout[:, 5]
 
 		## Compute advantage and discounted returns
@@ -136,16 +152,25 @@ class Worker():
 			# TODO: Verify: Containsr_t and v_(t+1)
 			# Q: What does this look like?
 		discounted_rewards = discount(self.rewards_plus, gamma)[:-1]
-		self.value_plus = np.asarray(values.tolist() + [bootstrap_value])
-		advantages = rewards + gamma*self.values_plus[1:] - self.value_plus[:-1]
+		self.values_plus = np.asarray(values.tolist() + [bootstrap_value])
+		advantages = rewards + gamma*self.values_plus[1:] - self.values_plus[:-1]
 		advantages = discount(advantages, gamma)
 
 		## Update the global network using gradients from loss
 		## Generate netowrk statistics
+		# print('observations')
+		# print(type(observations))
+		# print(observations.shape)
+		# print(observations[0].shape)
+		# print('values')
+		# print(type(values))
+		# print(values.shape)
+
 		rnn_state = self.local_AC.state_init
 		feed_dict = {
 			self.local_AC.target_v : discounted_rewards,
-			self.local_AC.inputs : np.vstack(observations),
+			# self.local_AC.inputs : np.vstack(observations),
+			self.local_AC.inputs : observations,
 			self.local_AC.actions : actions,
 			self.local_AC.advantages : advantages,
 			self.local_AC.state_in[0] : rnn_state[0],
@@ -158,20 +183,33 @@ class Worker():
 					self.local_AC.policy_loss,
 					self.local_AC.entropy,
 					self.local_AC.grads_norms,
-					self.local_AC.apply_grads
+					self.local_AC.vars_norms,
+					self.local_AC.apply_gradients
 				], 
 				feed_dict = feed_dict
 		)
 		# TODO: I use mean, not sum. Should we still divide with len(rollout?)
 		return v_l/len(rollout), p_l/len(rollout), e_l/len(rollout), g_n, v_n
 
+	def env_stepper(self, a, num_repeat=4):
+		s, r, d, i = self.env.step(a)
+		r_sum = r
+		for i in range(num_repeat-1):
+			if d: break
+			s, r, d, i = self.env.step(a)
+			r = np.clip(r, -1, 1)
+			r_sum += r
+
+		return s, r_sum, d, i
+
 
 	def work(self, max_episode_length, gamma, sess, coord, saver):
-		episode_cont = sess.run(self.global_episodes)
+		episode_count = sess.run(self.global_episodes)
 		total_steps = 0
-		print("Staring worker" + str(self.number))
+		print("Staring worker_" + str(self.number))
 		with sess.as_default(), sess.graph.as_default():
 			while not coord.should_stop():
+				print(str(episode_count) + ': worker_' + str(self.number))
 				sess.run(self.update_local_ops) # set local param to value of global
 				episode_buffer = [] # TODO: Create a class instead of using lists
 				episode_values = []
@@ -180,14 +218,15 @@ class Worker():
 				episode_step_count = 0
 				done = False
 
-				self.env.reset() # Initial observation
-				s = self.env.render(mode='rgb_array')
+				s = self.env.reset() # Initial observation
+				# self.env.render(mode='rgb_array')
 				episode_frames.append(s)
-				s = prepro(s, down_sample_factor)
+				# s = prepro(s, down_sample_factor)
 
 				rnn_state = self.local_AC.state_init # Tuple of arrays of zero
 
-				while not done: # TODO: fix env
+				while not done:
+
 					a_dist, v, rnn_state = \
 						sess.run([self.local_AC.policy, self.local_AC.value, self.local_AC.state_out],
 							feed_dict={
@@ -201,14 +240,16 @@ class Worker():
 					a = np.argmax(a_dist == a)
 
 					# r = self.env.make_action(self.actions[a]) / 100.0 # TODO: Fix this hardcoding!
-					_, r, done, _ = self.env.step(a)
+					s1, r, done, _ = self.env_stepper(a, num_repeat=1)
+					if 0 and self.name == 'worker_0':
+						self.env.render()
 
 					if not done:
 						# s1 = self.env.get_state().screen_buffer
-						s1 = self.env.render(mode='rgb_array')
+						# s1 = self.env.render(mode='rgb_array')
 						episode_frames.append(s1)
 						# s1 = process_frames(s1)
-						s1 = process_frames(s1)
+						# s1 = process_frames(s1)
 					else:
 						s1 = s
 
@@ -246,6 +287,13 @@ class Worker():
 
 				## Update global parameters
 				if len(episode_buffer) != 0:
+					v1 = sess.run(self.local_AC.value,
+						feed_dict={
+							self.local_AC.inputs : [s],
+							self.local_AC.state_in[0] : rnn_state[0],
+							self.local_AC.state_in[1] : rnn_state[1]
+						}
+					)
 					v_l, p_l, e_l, g_n, v_n = self.train(episode_buffer, sess, gamma, v1)
 
 
@@ -253,11 +301,12 @@ class Worker():
 				monitor_frequency = 5
 				if episode_count % monitor_frequency == 0 and episode_count > 0:
 					if self.name == 'worker_0':
-						if episode_count % (monitor_frequency*5) == 0:
-							time_per_step = 0.05
-							images = np.array(episode_frames)
-							make_gif(images, './frames/image' + str(episode_count) + '.gif',
-								duration=len(images)*time_per_step, true_image=True, salience=Fales)
+						# if episode_count % (monitor_frequency*5) == 0:
+						# 	print(str(episode_count) + ': Gif created.')
+						# 	time_per_step = 0.05
+						# 	images = np.array(episode_frames)
+						# 	make_gif(images, './frames/image' + str(episode_count) + '.gif',
+						# 		duration=len(images)*time_per_step, true_image=True, salience=False)
 						if episode_count % (monitor_frequency*50) == 0:
 							saver.save(sess, self.model_path + '/model-' + str(episode_count) + '.cptk')
 							print("Model saved.")
@@ -282,27 +331,9 @@ class Worker():
 					# 		Do we really need to track the output of all of them?
 
 					self.summary_writer.flush()
-					if self.name == 'worker_0': # Add one to the global episode counter
-						sess.run(self.increment)
-					episode_count += 1
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+				if self.name == 'worker_0': # Add one to the global episode counter
+					sess.run(self.increment)
+				episode_count += 1
 
 
 
