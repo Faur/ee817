@@ -17,6 +17,8 @@ from pyplot_logging import *
 #       train a different model or environment.
 #
 
+## Todo: saving and restarting from weights doesn't work yet. It pretends it does, but no progress is remembered.
+
 
 # ===========================
 # * Choose your setting.
@@ -25,11 +27,11 @@ from pyplot_logging import *
 # setting = "ddpg_pendulum"
 # from globals_ddpg_pendulum import *
 
-setting = "ddpg_pendulum_from_pixels"
+setting = "vanillaPG_cartpole"
 from globals_vanillaPG_cartpole import *
 
 #  todo
-#setting = "vanillaPG_cartpole"
+# setting = "ddpg_pendulum_from_pixels"
 #setting = "vanillaPG_gazebo"
 #setting = "DQN_cartpole"
 #setting = "DQN_gazebo"
@@ -59,9 +61,9 @@ def main():
 
     # ===========================
     # * Set up the learner
-    if setting.contains("ddpg"):
+    if "ddpg" in setting:
         learner = DDPGLearner(observation_space=env.observation_space, action_space=env.action_space)
-    elif setting.contains("vanillaPG"):
+    elif "vanillaPG" in setting:
         learner = VanillaPGLearner(observation_space=env.observation_space, action_space=env.action_space)
     else:
         raise NotImplementedError
@@ -167,7 +169,9 @@ def main():
                     # collect gradients
                     logger.collect(dict(zip(learner.gradient_names, np.absolute(gradients))))
 
-
+                    # log per-step variables
+                    if ep % LOG_EVERY == 0:
+                        logger.track(dict(zip(log_variable_names_step, var_vals_step)), step_nr=j)
 
                 s = s2
                 ep_reward += r
@@ -178,10 +182,6 @@ def main():
 
                 tf_summarizer.log(learner.sess, ep, j, var_vals_ep=var_vals_ep, var_vals_step=var_vals_step,terminated=terminated,
                                    prefilled_summaries_ep=prefilled_summaries_ep, prefilled_summaries_step=prefilled_summaries_step)
-                # log per-step variables
-                if ep % LOG_EVERY == 0:
-                    logger.track(dict(zip(log_variable_names_step, var_vals_step)), step_nr=j)
-
 
                 if terminated:
 
@@ -191,13 +191,13 @@ def main():
                         # add decayed rewards only once per episode
                         if not RAW_R:
                             ep_history = np.array(ep_history)
-                            ep_history[:, 2] = discount_rewards(ep_history[:, 2])
+                            ep_history[:, 2] = discount_rewards(ep_history[:, 2], GAMMA)
                             for [s, a, r, term, s2] in ep_history:
                                 replay_buffer.add(np.reshape(s, (learner.s_dim(),)), np.reshape(a, (learner.a_dim(),)),
                                                   r, term, np.reshape(s2, (learner.s_dim(),)))
 
                         # store plots for past episode
-                        if ep % LOG_EVERY == 0:
+                        if ep % LOG_EVERY == 0 and var_vals_step != []:
                             logger.store_tracked(log_variable_names_step, title="just_testing_"+"ep-"+str(ep), step_name="steps")
                         # track per-episode variables
                         logger.track(dict(zip(log_variable_names_ep, var_vals_ep)), ep)
@@ -227,8 +227,10 @@ def main():
                 os.makedirs(WEIGHTS_DIR)
             try:
                 saver.save(learner.sess, WEIGHTS_DIR + "ep_" + str(ep) + ".ckpt")
+                print "Stored final weights in: "+WEIGHTS_DIR + "ep_" + str(ep) + ".ckpt"
             except:
                 saver.save(learner.sess, WEIGHTS_DIR + "ep_unknown.ckpt")
+                print "Stored final weights in: " + WEIGHTS_DIR + "ep_unknown.ckpt"
 
 
         # ===========================

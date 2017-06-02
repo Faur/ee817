@@ -3,7 +3,7 @@
 #   Training Parameters
 # ==========================
 # Max training steps
-MAX_EPISODES = 500#50000
+MAX_EPISODES = 101#50000
 # Max episode length
 MAX_EP_STEPS = 1000
 # Base learning rate for the Actor network
@@ -40,7 +40,7 @@ MONITOR_DIR = './results/gym_monitor_' + MODEL_NAME + "_" +ENV_NAME_SHORT
 # Directory for storing tensorboard summary results
 SUMMARY_DIR = './results/tf_'+ MODEL_NAME + "_" + ENV_NAME_SHORT
 
-RESTORE = False
+RESTORE = True
 STORE_WEIGHTS = True
 # Directory to store weights to and load weights from
 if STORE_WEIGHTS:

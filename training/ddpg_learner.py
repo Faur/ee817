@@ -273,8 +273,8 @@ class DDPGLearner(Learner):
 
         self.sess = tf.Session()
 
-        state_dim = self.observation_space.shape[0]
-        action_dim = self.action_space.shape[0]
+        state_dim = self.s_dim()
+        action_dim = self.a_dim()
         action_bound = self.action_space.high
         # Ensure action bound is symmetric or starts at 0 - for scaling
         assert (self.action_space.high == -self.action_space.low) or (self.action_space.low == 0)

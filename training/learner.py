@@ -82,6 +82,21 @@ class Learner():
     def s_dim(self):
         return get_gym_space_size(self.observation_space)
 
+    # Difference to a_dim(): in the discrete case, return the number of discrete values.
+    # Better size calculation for Box-type action spaces.
+    def get_action_count(self):
+        if self.action_space is None:
+            return 0
+        elif isinstance(self.action_space, gym.spaces.Discrete):
+            return self.action_space.n
+        elif isinstance(self.action_space, gym.spaces.Box):
+            n = 1.
+            for i in range(self.action_space.shape):
+                n *= self.action_space.shape[i]
+            return n
+        else:
+            raise NotImplementedError
+
     def filter_output_qvals(self, other_training_stats, other_prediction_stats):
         return np.array([0])
 
