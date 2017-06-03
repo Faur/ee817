@@ -1,5 +1,7 @@
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')   # apparently this prevents figure() to pop up windows
 import matplotlib.pyplot as plt
 import os
 import re
@@ -119,8 +121,10 @@ class Logger():
                 val = np.array([val])
 
             if not key in self.dict:
+                ismulti = isinstance(val, np.ndarray) and len(val.flatten()) > 1
+                self.is_multi_var[key] = ismulti
+                val = val[np.newaxis, ...] if ismulti else val        # in case someone wants to create a plot with just one stored value, need to add an axis
                 self.dict[key] = XYTuple([step_nr], val)
-                self.is_multi_var[key] = isinstance(val, np.ndarray) and len(val.flatten()) > 1
 
             else:
                 try:

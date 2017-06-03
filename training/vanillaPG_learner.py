@@ -46,15 +46,16 @@ class agent():
             self.gradient_holders.append(placeholder)
 
         self.gradients = tf.gradients(self.loss, tvars)
-        self.gradients_only = [x for x in self.gradients if x is not None]
+        #self.gradients_only = [x for x in self.gradients if x is not None]
 
         optimizer = tf.train.AdamOptimizer(learning_rate=lr)
-        self.update_batch = optimizer.apply_gradients(zip(self.gradient_holders, tvars))
+        #self.update_batch = optimizer.apply_gradients(zip(self.gradient_holders, tvars))
+        self.update_batch = optimizer.apply_gradients(zip(self.gradients, tvars))
 
         self.summary_loss = tf.summary.scalar("Actor_Loss", self.loss)
         self.summary_grads = []
-        for grad in self.gradients_only:
-            self.summary_grads.append(tf.summary.histogram("Actor_Gradients_" + grad.name, grad))
+        #for grad in self.gradients_only:
+        #    self.summary_grads.append(tf.summary.histogram("Actor_Gradients_" + grad.name, grad))
 
 
 
@@ -84,11 +85,11 @@ class VanillaPGLearner(Learner):
             self.gradBuffer[ix] = grad * 0
 
         self.loss_names = ["Actor_Loss"]
-        self.other_training_stats_names = []# ["predicted_q_values"]
+        self.other_training_stats_names = []
         self.other_prediction_stats_names = ["Action_Probabs"]
 
         self.gradient_names = []
-        for grad in self.myAgent.gradients_only:
+        for grad in self.myAgent.gradients:
             self.gradient_names.append("Actor_Grad_" + grad.name)
 
 
@@ -108,17 +109,21 @@ class VanillaPGLearner(Learner):
 
         feed_dict = {self.myAgent.reward_holder: r_batch, self.myAgent.action_holder: np.squeeze(a_batch),
                      self. myAgent.state_in: s_batch}
-        grads, gradients, grad_summaries, loss, loss_summary = \
-            self.sess.run([self.myAgent.gradients, self.myAgent.gradients_only,
-                         self.myAgent.summary_grads, self.myAgent.loss, self.myAgent.summary_loss],
-                          feed_dict=feed_dict)
-        for idx, grad in enumerate(grads):
-            self.gradBuffer[idx] += grad
+        #grads, gradients, grad_summaries, loss, loss_summary = \
+        #    self.sess.run([self.myAgent.gradients, self.myAgent.gradients_only,
+        #                 self.myAgent.summary_grads, self.myAgent.loss, self.myAgent.summary_loss],
+        #                  feed_dict=feed_dict)
+        #for idx, grad in enumerate(grads):
+        #    self.gradBuffer[idx] += grad
 
-        feed_dict = dict(zip(self.myAgent.gradient_holders, self.gradBuffer))
-        _ = self.sess.run([self.myAgent.update_batch], feed_dict=feed_dict)
-        for ix, grad in enumerate(self.gradBuffer):
-                self.gradBuffer[ix] = grad * 0
+        #feed_dict = dict(zip(self.myAgent.gradient_holders, self.gradBuffer))
+        #_ = self.sess.run([self.myAgent.update_batch], feed_dict=feed_dict)
+        _, grads, grad_summaries, loss, loss_summary  \
+            = self.sess.run([self.myAgent.update_batch, self.myAgent.gradients,
+                         self.myAgent.summary_grads, self.myAgent.loss, self.myAgent.summary_loss],
+                            feed_dict=feed_dict)
+        #for ix, grad in enumerate(self.gradBuffer):
+        #        self.gradBuffer[ix] = grad * 0
 
 
         #return gradients, summaries, losses, loss_summaries, other_training_stats
@@ -137,6 +142,8 @@ class VanillaPGLearner(Learner):
         # Probabilistically pick an action given our network outputs.
         a_dist = self.sess.run(self.myAgent.output, feed_dict={self.myAgent.state_in: [s]})
         a = np.random.choice(range(self.get_action_count()), p=a_dist[0])
+        if a_dist[0,a]==0:
+            print("waahhaaaha")
         if not np.isscalar(a):
             a = a.flatten()
 

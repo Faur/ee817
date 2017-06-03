@@ -65,9 +65,16 @@ class SummaryManager():
             summary_str = sess.run(self.summary_ops_ep, feed_dict=dict_to_feed)
             self.writer.add_summary(summary_str, episode)
 
+        # TODO: treatment of mutli-variables is not good yet (it stores only the first variable). Change some time.
+        #  Needs separate names for step-variables for tf-summarizing and standard logging in every learner, probably.
         if not len(var_vals_step)==0:
             assert len(var_vals_step)==len(self.variable_names_step)
-            var_vals_step = [np.asscalar(var) if type(var) == np.ndarray else var for var in var_vals_ep]
+            for v, var in enumerate(var_vals_step):
+                if len(var.flatten()) > 1:
+                    var_vals_step[v] = var.flatten()[0]
+                elif type(var) == np.ndarray:
+                    var_vals_step[v] = np.asscalar(var)
+            #var_vals_step = [np.asscalar(var) if type(var) == np.ndarray else var for var in var_vals_step]
             dict_to_feed = {}
             for k, var in enumerate(var_vals_step):
                 dict_to_feed[self.variables_step[k]] = var     # if error here, the variable passed was not a scalar.
