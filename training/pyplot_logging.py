@@ -160,7 +160,7 @@ class Logger():
 
             val = np.array(val)
 
-            if not key in self.dict:
+            if not key in self.dict_stats_collecting:
                 self.dict_stats_collecting[key] = np.array(val)
 
             else:

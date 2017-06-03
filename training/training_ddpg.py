@@ -24,15 +24,17 @@ from pyplot_logging import *
 # * Choose your setting.
 # ===========================
 
-# setting = "ddpg_pendulum"
-# from globals_ddpg_pendulum import *
+#setting = "ddpg_pendulum"
+#from globals_ddpg_pendulum import *
 
-setting = "vanillaPG_cartpole"
-from globals_vanillaPG_cartpole import *
+# setting = "vanillaPG_cartpole"
+# from globals_vanillaPG_cartpole import *
+
+setting = "vanillaPG_gazebo"
+from globals_vanillaPG_gazebo import *
 
 #  todo
 # setting = "ddpg_pendulum_from_pixels"
-#setting = "vanillaPG_gazebo"
 #setting = "DQN_cartpole"
 #setting = "DQN_gazebo"
 
@@ -80,7 +82,8 @@ def main():
     tf_logdir = SUMMARY_DIR + "_tf/" + timestr
     logdir = SUMMARY_DIR + "/" + timestr
 
-    # for DDPG here:
+    # this still carries along q values; they are just 0 for if learner doesn't overwrite
+    #   the function "filter_output_qvals()."
     log_variable_names_ep = ["av_min_q", "av_max_q","survival_time", "ep_reward"]
     log_variable_names_step = []
     for i in range(learner.s_dim()):
@@ -139,6 +142,8 @@ def main():
                 prefilled_summaries_ep = []
                 gradients = None
                 if replay_buffer.size() > MINIBATCH_SIZE:
+
+                    # Sample batch
                     s_batch, a_batch, r_batch, t_batch, s2_batch = \
                         replay_buffer.sample_batch(MINIBATCH_SIZE)
 
@@ -146,7 +151,7 @@ def main():
                     gradients, summaries, losses, loss_summaries, other_training_stats \
                         = learner.train(s_batch, a_batch, r_batch, t_batch, s2_batch)
 
-                    # If the learner doesn't use q values or it's not implemented, these
+                    # If the learner doesn't overwrite that function, these
                     #   are just zero
                     q_vals = learner.filter_output_qvals(other_training_stats, other_pred_stats)
                     av_q_max_ep += max(q_vals)
@@ -168,6 +173,7 @@ def main():
 
                     # collect gradients
                     logger.collect(dict(zip(learner.gradient_names, np.absolute(gradients))))
+                    logger.collect(dict(zip(learner.loss_names, losses)))
 
                     # log per-step variables
                     if ep % LOG_EVERY == 0:
@@ -204,6 +210,7 @@ def main():
                         # track gradient statistics
                         if not gradients is None:
                             logger.merge_collected(learner.gradient_names, ep)
+                            logger.merge_collected(learner.loss_names, ep)
 
                         break
 

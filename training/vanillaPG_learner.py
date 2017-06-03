@@ -120,8 +120,6 @@ class VanillaPGLearner(Learner):
         for ix, grad in enumerate(self.gradBuffer):
                 self.gradBuffer[ix] = grad * 0
 
-        # todo: check that the grads are really only those we want
-
 
         #return gradients, summaries, losses, loss_summaries, other_training_stats
         return grads, grad_summaries, [loss], [loss_summary], []
