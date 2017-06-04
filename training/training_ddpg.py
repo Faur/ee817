@@ -18,13 +18,8 @@ from gym_utils import *
 from replay_buffer import *
 from pyplot_logging import *
 
-#
-#   Copy-paste this and adjust the constants in the beginning (capital letters) to
-#       train a different model or environment.
-#
 
-## Not todo: ?saving and restarting from weights doesn't work yet. It pretends it does, but no progress is remembered.
-##      Todo: -- Or it does? I think it does. Todo: test more thoroughly.
+##      Todo: Test whether saving and restarting from weights really works.
 
 # ===========================
 # * Choose your setting.
