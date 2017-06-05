@@ -3,9 +3,9 @@
 #   Training Parameters
 # ==========================
 # Max training steps
-MAX_EPISODES = 50000#50000
+MAX_EPISODES = 5000#50000
 # Max episode length
-MAX_EP_STEPS = 1000
+MAX_EP_STEPS = 5000
 # Base learning rate for the Actor network
 #ACTOR_LEARNING_RATE = 0.0001
 # Base learning rate for the Critic Network
@@ -67,3 +67,7 @@ DEBUG = True
 RAW_R = False
 # If on-policy method, usually don't want to use old experiences from before last update
 USE_OLD_EXP = False
+
+
+HIDDENLAYERS = [128]
+# LEARNINGRATE = 0.001

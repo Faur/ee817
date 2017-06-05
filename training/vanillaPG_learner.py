@@ -4,13 +4,15 @@ import datetime
 import tensorflow.contrib.slim as slim
 from learner import *
 
+from keras.models import Sequential, load_model
+from keras.layers.core import Dense, Activation
+from keras.layers.advanced_activations import LeakyReLU
+
+
 try:
     xrange = xrange
 except:
     xrange = range
-
-
-
 
 
 def setup():
@@ -22,11 +24,17 @@ def setup():
 
 
 class agent():
-    def __init__(self, lr, s_size, a_size, h_size):
+    def __init__(self, lr, s_size, a_size, hiddenLayers):
         # These lines established the feed-forward part of the network. The agent takes a state and produces an action.
         self.state_in = tf.placeholder(shape=[None, s_size], dtype=tf.float32)
-        hidden = slim.fully_connected(self.state_in, h_size, biases_initializer=None, activation_fn=tf.nn.relu)
-        self.output = slim.fully_connected(hidden, a_size, activation_fn=tf.nn.softmax, biases_initializer=None)
+        self.input_size = s_size
+        self.output_size = a_size
+
+        # hidden = slim.fully_connected(self.state_in, h_size, biases_initializer=None, activation_fn=tf.nn.relu)
+        ## MAKE MODEL BIGGER!
+        hidden = self.createModel(self.state_in, hiddenLayers, "LeakyReLU")
+
+        self.output = slim.fully_connected(hidden(self.state_in), a_size, activation_fn=tf.nn.softmax, biases_initializer=None)
         self.chosen_action = tf.argmax(self.output, 1)
 
         # The next six lines establish the training proceedure. We feed the reward and chosen action into the network
@@ -57,6 +65,38 @@ class agent():
         #for grad in self.gradients_only:
         #    self.summary_grads.append(tf.summary.histogram("Actor_Gradients_" + grad.name, grad))
 
+    def createModel(self, inputs, hiddenLayers, activationType):
+        model = Sequential()
+        if len(hiddenLayers) == 0: 
+            model.add(Dense(self.output_size, input_shape=(self.input_size,), init='lecun_uniform'))
+            model.add(Activation("linear"))
+        else :
+#             model.add(Dense(hiddenLayers[0], input_shape=(self.input_size,), init='lecun_uniform'))
+            model.add(Dense(hiddenLayers[0], kernel_initializer="lecun_uniform", input_shape=(self.input_size,))) #ccsmm            
+            if (activationType == "LeakyReLU") :
+                model.add(LeakyReLU(alpha=0.01))
+            else :
+                model.add(Activation(activationType))
+            
+            for index in range(1, len(hiddenLayers)):
+                # print("adding layer "+str(index))
+                layerSize = hiddenLayers[index]
+#                 model.add(Dense(layerSize, init='lecun_uniform'))
+                model.add(Dense(layerSize, kernel_initializer='lecun_uniform')) #ccsmm
+                if (activationType == "LeakyReLU") :
+                    model.add(LeakyReLU(alpha=0.01))
+                else :
+                    model.add(Activation(activationType))
+#             model.add(Dense(self.output_size, init='lecun_uniform'))
+            model.add(Dense(self.output_size, kernel_initializer='lecun_uniform')) #ccsmm            
+            model.add(Activation("linear"))
+        # optimizer = optimizers.RMSprop(lr=learningRate, rho=0.9, epsilon=1e-06)
+        # model.compile(loss="mse", optimizer=optimizer)
+        model.summary()
+        return model
+
+
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -64,8 +104,7 @@ class agent():
 
 
 class VanillaPGLearner(Learner):
-
-    def __init__(self, observation_space, action_space, num_hidden=8, gamma=0.99):
+    def __init__(self, observation_space, action_space, hiddenLayers, gamma=0.99):
 
         tf.reset_default_graph()  # Clear the Tensorflow graph.
 
@@ -74,7 +113,7 @@ class VanillaPGLearner(Learner):
         self.gamma = gamma
         #self.update_frequency = update_freq  ## vary batchsize instead
 
-        self.myAgent = agent(lr=1e-2, s_size=self.s_dim(), a_size=self.get_action_count(), h_size=num_hidden)  # Load the agent.
+        self.myAgent = agent(lr=0.01, s_size=self.s_dim(), a_size=self.get_action_count(), hiddenLayers=hiddenLayers)  # Load the agent.
 
         self.sess = tf.Session()
 
