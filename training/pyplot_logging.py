@@ -5,6 +5,7 @@ matplotlib.use('Agg')   # apparently this prevents figure() to pop up windows
 import matplotlib.pyplot as plt
 import os
 import re
+import memory_profiler
 
 ### np.vstack(): along first (0th) axis
 
@@ -102,7 +103,7 @@ class Logger():
         self.percentiles = [80, 99]
         #self.stats_names = ["99% are above this", "80% are above this", "average", "80% are below this", "99% are below this", "standard deviation"]
 
-
+#    @profile
     def track(self, variable_dict, step_nr):
 
         for key in variable_dict:
@@ -135,10 +136,17 @@ class Logger():
                     raise
 
 
+#    @profile
+    def store_tracked(self, variable_names, title, step_name="steps", keep=False):
+        '''
+        :param variable_names: names of already tracked variables that you want to store as plot
+        :param step_name: x-axis label
+        :param keep: If True, don't remove the tracked values used for plotting.
+                    Use for creating in-between plots.
+        '''
 
-    def store_tracked(self, variable_names, title, step_name="steps"):
-
-
+        if variable_names is None:
+            variable_names = self.dict.keys()
 
         for key in variable_names:
             if key in self.dict_stats:
@@ -150,12 +158,13 @@ class Logger():
             key_ = re.sub('[^a-zA-Z0-9_\n\-]', '-', key)
             store_plot(self.dict[key],  title=self.logdir+"/"+title+"_"+key_, y_name=key, multi=self.is_multi_var[key], step_name=step_name)
 
-            self.dict.pop(key, None)
-            self.is_multi_var.pop(key, None)
+            if not keep:
+                self.dict.pop(key, None)
+                self.is_multi_var.pop(key, None)
 
 
 
-    # collecting: stack values of many consecutive steps. Only log statistics of such a collection as one data point.
+    # "Collecting": stack values of many consecutive steps. Only log statistics of such a collection as one data point.
     # It's a sort of averaging, just with storing percentiles as well. Meant for logging gradients.
     def collect(self, variable_dict):
 
@@ -176,6 +185,7 @@ class Logger():
 
     # take stats of collected arrays belonging to the variables in "variable_names":
     # calc average and some percentiles and add entries to to self.dict_stats
+    #@profile
     def merge_collected(self, variable_names, big_step_nr):
 
         for key in variable_names:
@@ -183,6 +193,8 @@ class Logger():
             val = self.dict_stats_collecting[key]
 
             self.track_stats({key: val}, big_step_nr)
+
+            self.dict_stats_collecting.pop(key, None)
 
 
 
@@ -209,7 +221,17 @@ class Logger():
 
 
 
-    def store_tracked_stats(self, variable_names, title, step_name="steps"):
+    def store_tracked_stats(self, variable_names, title, step_name="steps", keep=False):
+        '''
+        :param variable_names: names of already tracked variables that you want to store as plot
+        :param step_name: x-axis label
+        :param keep: If True, don't remove the tracked values used for plotting.
+                    Use for creating in-between plots.
+        '''
+
+        if variable_names is None:
+            variable_names = self.dict_stats.keys()
+
         for key in variable_names:
             assert key in self.dict_stats
             val = self.dict_stats[key]
@@ -219,7 +241,8 @@ class Logger():
             key_ = re.sub('[^a-zA-Z0-9_\n\-]', '-', key)
             store_stats_plot(val, self.percentiles, title=self.logdir+"/"+title+"_"+key_, y_name=key, step_name=step_name)
 
-            self.dict_stats.pop(key, None)
+            if not keep:
+                self.dict_stats.pop(key, None)
 
 
     # create plots for all remaining
