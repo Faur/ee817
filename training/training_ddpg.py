@@ -69,7 +69,7 @@ def main():
     if "ddpg" in setting:
         learner = DDPGLearner(observation_space=env.observation_space, action_space=env.action_space)
     elif "vanillaPG" in setting:
-        learner = VanillaPGLearner(observation_space=env.observation_space, action_space=env.action_space)
+        learner = VanillaPGLearner(observation_space=env.observation_space, action_space=env.action_space, hiddenLayers=HIDDENLAYERS)
     else:
         raise NotImplementedError
 
