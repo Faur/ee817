@@ -174,8 +174,7 @@ def main():
                             print("waah")
                         print('| Grad-mean: %.2f' % (np.mean([np.mean(np.abs(g))for g in gradients]) ),
                               '| Grad-max: %.2f' % np.max([np.max(np.abs(g)) for g in gradients]))
-                    # If the learner doesn't overwrite that function, these
-                    #   are just zero
+                    # If the learner doesn't overwrite that function, these av_q's are just zero
                     q_vals = learner.filter_output_qvals(other_training_stats, other_pred_stats)
                     av_q_max_ep += max(q_vals)
                     av_q_min_ep += min(q_vals)
@@ -191,7 +190,7 @@ def main():
                     # collect any other training variables
                     logger.collect(dict(zip(log_variable_names_train, log_vals_train)))
 
-                #  Log state, action etc every step
+                # In some episodes, log state, action etc every step
                 if learner.s_dim() == 1:
                     log_vals_step = [s]
                 elif learner.s_dim() > 1:
@@ -210,7 +209,7 @@ def main():
 
 
                 if terminated:
-                    ep_rewards.append(ep_reward)            #  ["min_q_val", "max_q_val","survival_time", "ep_reward"]
+                    ep_rewards.append(ep_reward)            #  ["min_q_val", "max_q_val","survival_time", "ep_reward", ...]
                     log_vals_ep = [av_q_min_ep / float(j), av_q_max_ep / float(j), j, ep_reward, train_count, np.mean(ep_rewards)]
 
                 tf_summarizer.log(learner.sess, ep, j, var_vals_ep=log_vals_ep, var_vals_step=log_vals_step,terminated=terminated,
