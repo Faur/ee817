@@ -8,10 +8,29 @@ from gym_utils import *
 
 #
 # To inherit from this class, overwrite "train()" and "get_action()", as
-#  well as __init__(). In the latter, please set self.activation_space and
-#  self.observation_space. You can just pass these two as variables to __init__().
+#  well as __init__(). In the constructor, please set the variables mentioned.
+#  self.activation_space and self.observation_space you can just expect to be passed
+#  as variables to __init__().
+#  For the other variables:
+#            self.gradient_names:
+#           A list with gradient names, same length as the list "gradients"/first result returned by learner.train().
+
+#            self.loss_names = []
+#           A list with loss names, same length as the list "losses"/third result returned by learner.train().
+
+#            self.other_training_stats_names = []
+#           A list with same length as the last return value of learner.train().
+
+#            self.other_prediction_stats_names = []
+#           A list of same length as the last return value of learner.get_action().
 #
-# It's easiest, if that's possible, if a child class keeps the same arguments to
+#           Please also call:
+#            self.sess = tf.Session()  # learner is expected to own a session
+#            self.sess.run(tf.global_variables_initializer())
+#
+#
+#
+# Please keep the same arguments to
 #  train() and get_action(), and the same return values. Otherwise this class is not
 #  much use ;)
 #
@@ -26,13 +45,12 @@ from gym_utils import *
 # *  If it's a bigger array, logging will calculate average and percentiles of these
 # *  values. (> pyplot_logging.py)
 #
+#
+#
 
 class Learner():
-
-    def __init__(self):
-
-
-        self.gradient_names = []    # should have same shape as
+    '''
+    self.gradient_names = []    # should have same shape as
         #self.summaries = []
         self.loss_names = []
         self.other_training_stats_names = []
@@ -40,6 +58,22 @@ class Learner():
 
         self.action_space = None    # maybe use openAI-gym "gym.box.Box"/"...Discrete" variables here
         self.observation_space = None     # "Box"/"Discrete"; if image input: use "Box"
+
+        self.sess = tf.Session() # learner is expected to own a session
+        self.sess.run(tf.global_variables_initializer())
+
+    '''
+
+    def __init__(self, a_space=None, o_space=None):
+
+
+        self.gradient_names = []
+        self.loss_names = []
+        self.other_training_stats_names = []
+        self.other_prediction_stats_names = []
+
+        self.action_space = a_space    # maybe use openAI-gym "gym.box.Box"/"...Discrete" variables here
+        self.observation_space = o_space     # "Box"/"Discrete"; if image input: use "Box"
 
         self.sess = tf.Session() # learner is expected to own a session
         self.sess.run(tf.global_variables_initializer())
