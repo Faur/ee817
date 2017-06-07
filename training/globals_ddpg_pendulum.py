@@ -40,7 +40,7 @@ MONITOR_DIR = './results/gym_monitor_' + MODEL_NAME + "_" +ENV_NAME_SHORT
 # Directory for storing tensorboard summary results
 SUMMARY_DIR = './results/still_testing/tf_'+ MODEL_NAME + "_" + ENV_NAME_SHORT
 
-RESTORE = True
+RESTORE = False
 STORE_WEIGHTS = True
 # Directory to store weights to and load weights from
 if STORE_WEIGHTS:
