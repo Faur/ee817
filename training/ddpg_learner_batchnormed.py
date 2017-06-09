@@ -70,9 +70,10 @@ class ActorNetwork(object):
 
     def create_actor_network(self):
         inputs = tf.placeholder(tf.float32, shape=[None, self.s_dim])
-        net = tflearn.fully_connected(inputs, self.h_shape[0], activation='relu')
-        for i in range(1, len(self.h_shape)):
+        net = tflearn.batch_normalization(inputs)
+        for i in range(0, len(self.h_shape)):
             net = tflearn.fully_connected(net, self.h_shape[i], activation='relu')
+            net = tflearn.batch_normalization(net, gamma=1)
         # Final layer weights are init to Uniform[-3e-3, 3e-3]
         w_init = tflearn.initializations.uniform(minval=-0.003, maxval=0.003)
         # tflearn.fully_connected()
@@ -172,9 +173,10 @@ class CriticNetwork(object):
     def create_critic_network(self, h_shape=[20, 20]):
         inputs = tflearn.input_data(shape=[None, self.s_dim])
         action = tflearn.input_data(shape=[None, self.a_dim])
-        net = tflearn.fully_connected(inputs, self.h_shape[0], activation='relu')
-        for i in range(1, len(self.h_shape)-1):
+        net = tflearn.batch_normalization(inputs)
+        for i in range(0, len(self.h_shape)-1):
             net = tflearn.fully_connected(net, self.h_shape[i], activation='relu')
+            net = tflearn.batch_normalization(net)
         # Add the action tensor in the 2nd hidden layer
         # Use two temp layers to get the corresponding weights and biases
         t1 = tflearn.fully_connected(net, self.h_shape[-1])
@@ -262,7 +264,7 @@ def build_summaries(state_dim):
 
 
 
-class DDPGLearner(Learner):
+class DDPGLearnerBN(Learner):
     '''
     Encapsulates all nets and function belonging to the DDPG actor-critic method.
     Owns a tensorflow session.
@@ -389,6 +391,12 @@ class DDPGLearner(Learner):
         # Added exploration noise
         a = self.actor.predict(np.reshape(s, (1, self.actor.s_dim))) + np.random.uniform(self.action_space.low * 1. / (1. + t),
                                                                                self.action_space.high * 1. / (1. + t))
+
+        #if t % 20 == 0:
+        #    a = self.actor.predict(np.reshape(s, (1, self.actor.s_dim)))
+        #else:
+        #    a = np.random.uniform(self.action_space.low, self.action_space.high)
+
         a = np.clip(a, self.action_space.low, self.action_space.high)
 
         return a.flatten(), []          # flatten: actor.predict returns an array of shape (1,1), but logging expects a single-dimensional input

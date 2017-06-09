@@ -1,9 +1,6 @@
-
-import numpy as np
 import tensorflow as tf
-import gym
 
-from gym_utils import *
+from utilities.gym_utils import *
 
 
 #
