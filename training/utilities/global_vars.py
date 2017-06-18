@@ -347,4 +347,4 @@ class GlobalVars():
             D = vars(self)
             for key in sorted(D.iterkeys()):
                 val = D[key]
-                f.write('%25s:  %s  ' % (key, str(val)))
+                f.write('%25s:  %s  \n' % (key, str(val)))
