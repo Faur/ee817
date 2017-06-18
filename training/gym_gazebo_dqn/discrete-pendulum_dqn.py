@@ -22,6 +22,9 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.regularizers import l2
 import memory
 
+import sys
+sys.path.append('../')
+
 from utilities.discrete_swingup import DiscreteSwingup
 from utilities.pyplot_logging import Logger
 
