@@ -472,9 +472,8 @@ def main(nr_action_bins=5, epochs=1000, updateTargetNetwork=10000, learningRate=
 if __name__ == '__main__':
 
     epochs = 500
+    lr = 0.00025
+    targ_upd = 2000
     for b in [3, 7, 11, 21]:
-        for targ_upd in [1500, 5000, 10000]:
-            for lr in [0.001, 0.00025, 0.00005]:
-
                 avg_reward = main(nr_action_bins=b, epochs=epochs, updateTargetNetwork=targ_upd, learningRate=lr)
                 print "Training complete. Nr epochs: "+str(epochs)+". Average reward: "+str(avg_reward)+"."+ "| a-bins: "+str(b) + ", updT: "+str(targ_upd)+", lr: "+str(lr)
