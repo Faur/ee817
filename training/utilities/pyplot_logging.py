@@ -5,7 +5,7 @@ matplotlib.use('Agg')   # apparently this prevents figure() to pop up windows
 import matplotlib.pyplot as plt
 import os
 import re
-import memory_profiler
+#import memory_profiler
 
 ### np.vstack(): along first (0th) axis
 
@@ -81,8 +81,22 @@ class Logger():
 
     Three types of plots:
         single variables, multiple variables, (stored in self.dict, whether single or multi is stored in self.is_2d)
-        and stats which have average, and value above which
-        80% and 99% of all values lie, and value below which 80% and 99% of all values lie. Or that's the plan.
+        and "stats" which are average, and value above which 80% and 99% of all values lie,
+        and value below which 80% and 99% of all values lie.
+
+    Usage:
+        There are three modes.
+        First mode: Tracking variables.
+            - Call track(var_dict, step_nr) multiple times (with consecutive step_nr's)
+            - For storing, call store_tracked. This will create plots; one plot, x=step_nr vs. y=value, for each tracked variable.
+        Second mode: Collecting, for large arrays of values
+            - Call collect(var_dict) multiple times
+            - Call merge_collected(var_names, step_nr) to track(see above) *statistics* of the collected (big) variable sets.
+            - Call store_tracked_stats to store plots of x=step_nr vs y=statistics
+        Third mode: tracking stats directly
+            - Call track_stats(var_dict, step_nr) - values should be bigger arrays of values
+            - Call store_tracked_stats to store plots of x=step_nr vs y=statistics
+
     '''
 
     def __init__(self, logdir):
@@ -140,6 +154,7 @@ class Logger():
     def store_tracked(self, variable_names, title, step_name="steps", keep=False):
         '''
         :param variable_names: names of already tracked variables that you want to store as plot
+        :param title: name of plot = title + variable name. Best add the last epoch to the title.
         :param step_name: x-axis label
         :param keep: If True, don't remove the tracked values used for plotting.
                     Use for creating in-between plots.
