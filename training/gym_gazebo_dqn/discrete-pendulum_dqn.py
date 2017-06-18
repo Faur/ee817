@@ -423,13 +423,13 @@ def main(nr_action_bins=5, epochs=1000, updateTargetNetwork=10000, learningRate=
                     last100ScoresIndex = 0
                 if not last100Filled:
                     pass
-                    #print ("EP "+str(epoch)+" - {} timesteps".format(t+1)+"   Exploration="+str(round(explorationRate, 2)))
+                    print ("EP "+str(epoch)+" - {} timesteps".format(t+1)+"   Exploration="+str(round(explorationRate, 2)))
                 else :
                     m, s = divmod(int(time.time() - start_time), 60)
                     h, m = divmod(m, 60)
-                    # print ("EP "+str(epoch)+" - {} timesteps".format(t+1)+" - last100 Steps : "+str((sum(last100Scores)/len(last100Scores)))+" - Cumulated R: "+str(cumulated_reward)+"   Eps="+str(round(trainExplorationRate, 2))+"     Time: %d:%02d:%02d" % (h, m, s))
+                    print ("EP "+str(epoch)+" - {} timesteps".format(t+1)+" - last100 Steps : "+str((sum(last100Scores)/len(last100Scores)))+" - Cumulated R: "+str(cumulated_reward)+"   Eps="+str(round(trainExplorationRate, 2))+"     Time: %d:%02d:%02d" % (h, m, s))
                     if (epoch)%100==0:
-                        print("EP "+str(epoch)+" - {} timesteps".format(t+1)+" - last100 Steps : "+str((sum(last100Scores)/len(last100Scores)))+" - Cumulated R: "+str(cumulated_reward)+"   Eps="+str(round(trainExplorationRate, 2))+"     Time: %d:%02d:%02d" % (h, m, s))
+                        #print("EP "+str(epoch)+" - {} timesteps".format(t+1)+" - last100 Steps : "+str((sum(last100Scores)/len(last100Scores)))+" - Cumulated R: "+str(cumulated_reward)+"   Eps="+str(round(trainExplorationRate, 2))+"     Time: %d:%02d:%02d" % (h, m, s))
                         #save model weights and monitoring data every 100 epochs. 
                         deepQ.saveModel('/tmp/'+model_name+'_ep'+str(epoch)+'.h5')
 #                         env.monitor.flush()
