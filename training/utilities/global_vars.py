@@ -69,6 +69,9 @@ class GlobalVars():
         self.USE_OLD_EXP = True
         # For ddpg only:
         self.SIZE_HIDDEN = [300, 300]  # 300
+        # The learner might also add own noise (e.g. in case of a stochastic policy). This variable
+        #   adds noise in the main training loop. Currently implemented: 'none', 'exp'
+        self.ADD_EXPLORATION_NOISE = 'none'
 
 
     # Directory for storing gym results
@@ -141,7 +144,7 @@ class GlobalVars():
         # Size of replay buffer
         self.BUFFER_SIZE = 100000 #10000
         self.MINIBATCH_SIZE = 64
-        self.LEARN_START = 10000
+        self.LEARN_START = 0
 
         self.DEBUG = True
 
@@ -155,6 +158,9 @@ class GlobalVars():
         self.USE_OLD_EXP = True
         # For ddpg only:
         self.SIZE_HIDDEN = [300, 300]  # 300
+        # The learner might also add own noise (e.g. in case of a stochastic policy). This variable
+        #   adds noise in the main training loop. Currently implemented: 'none', 'exp'
+        self.ADD_EXPLORATION_NOISE = 'exp'
 
         return self
 

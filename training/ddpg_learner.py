@@ -380,6 +380,7 @@ class DDPGLearner(Learner):
 
 
 
+### TODO: change exploration policy
     def get_action(self, s, t=0):
         '''
         :param s: state / observation
@@ -387,8 +388,8 @@ class DDPGLearner(Learner):
         :return: the advised action & empty "other prediction stats"
         '''
         # Added exploration noise
-        a = self.actor.predict(np.reshape(s, (1, self.actor.s_dim))) + np.random.uniform(self.action_space.low * 1. / (1. + t),
-                                                                               self.action_space.high * 1. / (1. + t))
+        a = self.actor.predict(np.reshape(s, (1, self.actor.s_dim))) #+ np.random.uniform(self.action_space.low * 1. / (1. + t),
+                                                                     #          self.action_space.high * 1. / (1. + t))
         a = np.clip(a, self.action_space.low, self.action_space.high)
 
         return a.flatten(), []          # flatten: actor.predict returns an array of shape (1,1), but logging expects a single-dimensional input

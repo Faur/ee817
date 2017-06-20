@@ -382,6 +382,7 @@ class DDPGLearnerBN(Learner):
 
 
 
+
     def get_action(self, s, t=0):
         '''
         :param s: state / observation
@@ -389,8 +390,8 @@ class DDPGLearnerBN(Learner):
         :return: the advised action & empty "other prediction stats"
         '''
         # Added exploration noise
-        a = self.actor.predict(np.reshape(s, (1, self.actor.s_dim))) + np.random.uniform(self.action_space.low * 1. / (1. + t),
-                                                                               self.action_space.high * 1. / (1. + t))
+        a = self.actor.predict(np.reshape(s, (1, self.actor.s_dim))) # + np.random.uniform(self.action_space.low * 1. / (1. + t),
+                                                                     #          self.action_space.high * 1. / (1. + t))
 
         #if t % 20 == 0:
         #    a = self.actor.predict(np.reshape(s, (1, self.actor.s_dim)))

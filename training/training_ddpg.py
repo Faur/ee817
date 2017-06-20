@@ -71,6 +71,44 @@ def list_state_and_action(learner, a, s):
         log_vals_step += [a[k] for k in range(learner.a_dim())]
     return log_vals_step
 
+
+# with probab. epsilon, choose random action
+def add_exploration_noise_exp(action, episode, action_space):
+    epsilon = max(0.995**episode, 0.05)  # DQN exploration policy
+    rand = random.random()
+    if rand < epsilon:
+        if type(action_space) == gym.spaces.Discrete:
+            action = np.random.randint(0, action_space.n)
+        elif type(action_space) == gym.spaces.Box:
+            action = action_space.sample()
+        else:
+            raise NotImplementedError
+    return action
+
+# sample from a normal distribution around the action, with sdev = epsilon * 1/2 * action-range
+# Todo: test
+def add_exploration_noise_exp_sdev(action, episode, action_space):
+    epsilon = max(0.995**episode, 0.05)
+    if type(action_space) == gym.spaces.Discrete:
+        sdev = float(action_space.n) / 2. * epsilon
+        action = np.random.normal(loc=float(action), scale=sdev)
+        action = np.round(action).astype(int)
+    elif type(action_space) == gym.spaces.Box:
+        if action_space.high != float("inf") and action_space.low != float("inf"):
+            sdevs = epsilon * (action_space.high - action_space.low).astype(float) / 2.
+            action = np.random.normal(loc=action, scale=sdevs)
+            action = np.clip(action, action_space.low, action_space.high)
+        else:
+            print("Please choose a way to set the value range /sdev in case of infinite possible action values.")
+            print("It's probably better to use another policy here.")
+            raise NotImplementedError
+    else:
+        raise NotImplementedError
+
+    return action
+
+# TODO: Write same exploration noise functions with 1/ep ~ epsilon
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
 
 
@@ -146,7 +184,10 @@ def main(g, setting):
 
             for j in range(g.MAX_EP_STEPS):
 
-                a, other_pred_stats = learner.get_action(s, 1 + ep/100.)  # before: just t=ep
+                a, other_pred_stats = learner.get_action(s,0)  # before: just t=ep
+                if g.ADD_EXPLORATION_NOISE == 'exp':
+                    a = add_exploration_noise_exp(a, ep, env.action_space)
+
 
                 s2, r, terminated, _ = env.step(a)
                 if g.CLIP_REWARDS:
