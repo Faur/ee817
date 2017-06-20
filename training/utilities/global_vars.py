@@ -55,6 +55,7 @@ class GlobalVars():
         # Size of replay buffer
         self.BUFFER_SIZE = 10000
         self.MINIBATCH_SIZE = 64
+        self.LEARN_START = 0 # more precisely it is = max(LEARN_START, MINIBATCH_SIZE)
 
         self.DEBUG = False
 
@@ -138,8 +139,9 @@ class GlobalVars():
         # WEIGHTS_TO_RESTORE = WEIGHTS_DIR + "ep_20.ckpt"
         self.RANDOM_SEED = 1234
         # Size of replay buffer
-        self.BUFFER_SIZE = 10000
-        self.MINIBATCH_SIZE = 5 * 64
+        self.BUFFER_SIZE = 100000 #10000
+        self.MINIBATCH_SIZE = 64
+        self.LEARN_START = 10000
 
         self.DEBUG = True
 
@@ -152,7 +154,7 @@ class GlobalVars():
         # If on-policy method, usually don't want to use old experiences from before last update
         self.USE_OLD_EXP = True
         # For ddpg only:
-        self.SIZE_HIDDEN = [400, 300]  # 300
+        self.SIZE_HIDDEN = [300, 300]  # 300
 
         return self
 
@@ -176,14 +178,14 @@ class GlobalVars():
         # Base learning rate for the Critic Network, if any
         self.CRITIC_LEARNING_RATE = 0.001  # p.emami: 0.001
         # Soft target update param
-        self.TAU = 0.001
+        self.TAU = 0.00015 #0.001
 
         # ===========================
         #   Utility Parameters
         # ===========================
         # Render gym env during training
         self.RENDER_ENV = True
-        self.RENDER_EVERY = 50
+        self.RENDER_EVERY = 1
         # Use Gym Monitor
         self.GYM_MONITOR_EN = False  # nonworking on my machine
         # Gym environment
