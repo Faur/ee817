@@ -129,6 +129,7 @@ def main(g, setting):
 
     try:
         train_count = 0
+        step_count = 0
         ep_rewards = []
 
         start_ep = g.RESTORE_EP + 1 if g.RESTORE else 0
@@ -172,7 +173,7 @@ def main(g, setting):
                 prefilled_summaries_train = []
                 prefilled_summaries_ep = []
                 gradients = None
-                if replay_buffer.size() > g.MINIBATCH_SIZE:
+                if replay_buffer.size() > g.MINIBATCH_SIZE and step_count  >= g.LEARN_START:
 
                     # Sample batch
                     s_batch, a_batch, r_batch, t_batch, s2_batch = \
@@ -181,6 +182,7 @@ def main(g, setting):
                         replay_buffer.clear()
 
                     #  Train  #Todo: remove the last parameter, "train_actor", from both learner.train()s again.
+                              #Todo:  because it's completely obsolete since I added g.TRAIN_START
                     gradients, summaries, losses, loss_summaries, other_training_stats \
                         = learner.train(s_batch, a_batch, r_batch, t_batch, s2_batch, train_actor=True)
                     train_count += 1
@@ -214,6 +216,7 @@ def main(g, setting):
 
                 s = s2
                 ep_reward += r
+                step_count += 1
 
 
                 log_vals_ep = []
@@ -310,13 +313,11 @@ if __name__ == '__main__':
     # * Choose your setting.
     # ===========================
 
-    # setting = "ddpg_pendulum"
-    # g = GlobalVars().set_ddpg_pendulum()
-    # from globals_ddpg_pendulum import *
+    #setting = "ddpg_pendulum"
+    #g = GlobalVars().set_ddpg_pendulum()
 
     setting = "ddpg_gazebo"
     g = GlobalVars().set_ddpg_gazebo()
-    # from globals_ddpg_gazebo import *
 
     # setting = "vanillaPG_cartpole"
     # from globals_vanillaPG_cartpole import *
