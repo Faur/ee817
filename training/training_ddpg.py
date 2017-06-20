@@ -181,6 +181,10 @@ def main(g, setting):
             ep_history = []
             s = env.reset()
 
+            print('#################################################')
+            print(s)
+            break
+
 
             for j in range(g.MAX_EP_STEPS):
 

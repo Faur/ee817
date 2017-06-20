@@ -462,7 +462,7 @@ def main(nr_action_bins=5, epochs=1000, updateTargetNetwork=10000, learningRate=
         trainExplorationRate = max (0.05, trainExplorationRate)
 
 #     env.monitor.close()
-    env.close()
+#    env.close()
 
     return reward_sum / float(epoch+1)  # = avg reward
 
@@ -474,6 +474,6 @@ if __name__ == '__main__':
     epochs = 500
     lr = 0.00025
     targ_upd = 2000
-    for b in [3, 7, 11, 21]:
+    for b in [7]: #11, 21]:
                 avg_reward = main(nr_action_bins=b, epochs=epochs, updateTargetNetwork=targ_upd, learningRate=lr)
                 print "Training complete. Nr epochs: "+str(epochs)+". Average reward: "+str(avg_reward)+"."+ "| a-bins: "+str(b) + ", updT: "+str(targ_upd)+", lr: "+str(lr)
